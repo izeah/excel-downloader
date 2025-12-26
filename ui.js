@@ -179,8 +179,10 @@ document.addEventListener("DOMContentLoaded", () => {
         if (user) {
             userProfileDiv.classList.remove("hidden");
             userProfileDiv.classList.add("flex");
-            userInitials.textContent = user.name.charAt(0).toUpperCase();
-            usernameSpan.textContent = user.name;
+            // Use user.name, fallback to user.email, or 'User' if neither is available
+            const displayUsername = user.name || user.email || "User";
+            userInitials.textContent = displayUsername.charAt(0).toUpperCase();
+            usernameSpan.textContent = displayUsername;
         }
     };
 
