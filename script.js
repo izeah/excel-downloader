@@ -190,11 +190,11 @@ document.addEventListener("DOMContentLoaded", () => {
             );
             window.hideLoginModal();
             window.updateUIForLogin(data.data.user);
+            window.showToast("Login successful!", {
+                type: "info",
+            });
 
             if (lastRequestArgs) {
-                window.showToast("Login successful!", {
-                    type: "info",
-                });
                 await downloadFile(lastRequestArgs.url, lastRequestArgs.method);
                 lastRequestArgs = null;
             }
@@ -251,6 +251,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const user = getUser();
         if (user) {
             window.updateUIForLogin(user);
+        } else {
+            window.updateUIForLogout();
         }
 
         // Restore URL history

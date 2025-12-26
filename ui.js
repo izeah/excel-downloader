@@ -8,6 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const loginModalBackdrop = document.getElementById("login-modal-backdrop");
     const closeLoginModalBtn = document.getElementById("close-login-modal");
     const userProfile = document.getElementById("user-profile");
+    const loginButton = document.getElementById("login-button");
     const toastContainer = document.getElementById("toast-container");
     const clearToastsButton = document.getElementById("clear-toasts-button");
     const progressBarContainer = document.getElementById(
@@ -206,6 +207,7 @@ document.addEventListener("DOMContentLoaded", () => {
     window.updateUIForLogin = (user) => {
         if (user) {
             userProfile.classList.remove("hidden");
+            loginButton.classList.add("hidden");
             const displayUsername = user.name || user.email || "User";
             document.getElementById("user-initials").textContent =
                 displayUsername.charAt(0).toUpperCase();
@@ -215,6 +217,7 @@ document.addEventListener("DOMContentLoaded", () => {
     };
     window.updateUIForLogout = () => {
         userProfile.classList.add("hidden");
+        loginButton.classList.remove("hidden");
     };
 
     // --- PARTICLES.JS ---
@@ -266,6 +269,7 @@ document.addEventListener("DOMContentLoaded", () => {
         localStorage.setItem("theme", newTheme);
         applyTheme(newTheme);
     });
+    loginButton.addEventListener("click", window.showLoginModal);
     closeLoginModalBtn.addEventListener("click", window.hideLoginModal);
     loginModalBackdrop.addEventListener("click", window.hideLoginModal);
     logoutConfirmNo.addEventListener("click", window.hideLogoutConfirmModal);
