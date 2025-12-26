@@ -192,7 +192,7 @@ document.addEventListener("DOMContentLoaded", () => {
             window.updateUIForLogin(data.data.user);
 
             if (lastRequestArgs) {
-                window.showToast("Login successful! Retrying download...", {
+                window.showToast("Login successful!", {
                     type: "info",
                 });
                 await downloadFile(lastRequestArgs.url, lastRequestArgs.method);
