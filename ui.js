@@ -120,7 +120,7 @@ document.addEventListener("DOMContentLoaded", () => {
     };
     window.showToast = (
         message,
-        options = { type: "info", details: "", fileName: "" }
+        options = { type: "info", details: "", size: 0, fileName: "" }
     ) => {
         const existingToasts =
             toastContainer.querySelectorAll(":scope > div.toast");
@@ -148,15 +148,41 @@ document.addEventListener("DOMContentLoaded", () => {
                 icon = "fa-info-circle";
                 break;
         }
-        toast.innerHTML = `<div class="w-full rounded-lg border ${bgColor} p-4 shadow-lg"><div class="flex items-start"><i class="fas ${icon} ${textColor} mt-1"></i><div class="ml-3 flex-1"><p class="text-sm font-medium ${textColor}">${message}</p>${
-            options.details
-                ? `<p class="mt-1 text-sm text-muted-foreground">${options.details}</p>`
-                : ""
-        }${
-            options.type === "success"
-                ? `<div class="mt-2"><button data-filename="${options.fileName}" class="retry-download-link text-sm font-medium text-primary hover:underline">Try again</button></div>`
-                : ""
-        }</div><button class="ml-4 flex-shrink-0 close-toast"><i class="fas fa-times text-muted-foreground hover:text-foreground"></i></button></div></div>`;
+        toast.innerHTML = `<div class="w-full rounded-lg border ${bgColor} p-4 shadow-lg">
+            <div class="flex items-start">
+                <i class="fas ${icon} ${textColor} mt-1"></i>
+                <div class="ml-3 flex-1">
+                    <p class="text-sm font-medium ${textColor}">${message}</p>
+                    ${
+                        options.details
+                            ? `<p class="mt-1 text-sm ${textColor}">${options.details}</p>`
+                            : ""
+                    }
+                    ${
+                        options.type === "success"
+                            ? `<div class="mt-2">
+                            <span class="text-xs block mb-1 ${textColor} opacity-80">
+                                If your download does not start automatically, click the link below to try again:
+                            </span>
+                            <button data-filename="${
+                                options.fileName
+                            }" class="retry-download-link text-left text-sm font-medium ${textColor} hover:underline cursor-pointer"> ${
+                                  options.fileName
+                              } (${
+                                  options.size
+                                      ? (options.size / 1024).toFixed(2) + " KB"
+                                      : "0 Bytes"
+                              })
+                                      </button>
+                              </div>`
+                            : ""
+                    }
+                </div>
+                <button class="ml-4 flex-shrink-0 close-toast">
+                    <i class="fas fa-times text-muted-foreground hover:text-foreground"></i>
+                </button>
+            </div>
+        </div>`;
         toastContainer.insertBefore(toast, clearToastsButton);
         updateClearToastsButtonVisibility();
         setTimeout(() => {
