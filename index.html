@@ -148,9 +148,19 @@
                             id="logout-dropdown"
                             class="absolute top-16 right-18 hidden w-48 rounded-md border border-border bg-card p-1"
                         >
+                            <span
+                                class="cursor-pointer text-md text-center py-1 font-bold block md:hidden"
+                                id="hello-user"
+                                >Hello, <span id="username">User</span>
+                            </span>
+
+                            <hr
+                                class="block md:hidden border-accent border-1 my-1"
+                            />
+
                             <button
                                 id="logout-button"
-                                class="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-destructive hover:bg-destructive hover:text-destructive-foreground font-bold"
+                                class="flex w-full items-center justify-center py-1 gap-2 rounded-sm text-sm text-destructive hover:bg-destructive hover:text-destructive-foreground font-bold"
                             >
                                 <i
                                     class="fa-solid fa-arrow-right-from-bracket"
