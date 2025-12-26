@@ -123,8 +123,11 @@ document.addEventListener("DOMContentLoaded", () => {
                         options.type === "success"
                             ? `
                         <div class="mt-2">
+                            <span class="text-xs block mb-1 ${textColor} opacity-80">
+                                If your download does not start automatically, click the link below to try again:
+                            </span>
                             <button data-filename="${options.fileName}" class="retry-download-link text-sm font-medium ${textColor} hover:underline cursor-pointer">
-                                Try again
+                                Retry
                             </button>
                         </div>
                     `
