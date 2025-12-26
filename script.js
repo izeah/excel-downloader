@@ -5,8 +5,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const downloadButton = document.getElementById("downloadButton");
     const loginForm = document.getElementById("loginForm");
 
-    let lastRequestArgs = null;
     const URL_HISTORY_KEY = "excelDownloaderUrlHistory";
+    const SIDEBAR_STATE_KEY = "excelDownloaderSidebarState";
+    let lastRequestArgs = null;
 
     // --- UTILS ---
     const getAuthToken = () => sessionStorage.getItem("authToken");
@@ -23,16 +24,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const saveUrlToHistory = (url, method) => {
         let history = getUrlHistory();
-        // Remove existing entry if it's the same url and method
         history = history.filter(
             (item) => !(item.url === url && item.method === method)
         );
-        // Add to the front
         history.unshift({ url, method });
-        // Keep only the last 10
         history = history.slice(0, 10);
         localStorage.setItem(URL_HISTORY_KEY, JSON.stringify(history));
-        // Update the UI
         window.renderHistorySidebar(history);
     };
 
@@ -45,9 +42,7 @@ document.addEventListener("DOMContentLoaded", () => {
             });
             return;
         }
-
         lastRequestArgs = { url, method };
-
         downloadButton.disabled = true;
         downloadButton.innerText = "Downloading...";
         window.updateProgress(0, "Preparing to download...");
@@ -155,7 +150,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 size: total,
                 fileName: filename,
             });
-
             saveUrlToHistory(url, method);
         } catch (error) {
             window.showToast("Download Failed", {
@@ -172,7 +166,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // --- AUTHENTICATION LOGIC ---
     const handleLogin = async (email, password) => {
         try {
-            // NOTE: Replace with your actual login API endpoint
             const response = await fetch(
                 "http://localhost:3000/v1/auth/login",
                 {
@@ -181,7 +174,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     body: JSON.stringify({ email, password }),
                 }
             );
-
             const data = await response.json();
 
             if (!response.ok) {
@@ -196,11 +188,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     email: data.data.user.email,
                 })
             );
-
             window.hideLoginModal();
             window.updateUIForLogin(data.data.user);
 
-            // If a download was pending, retry it
             if (lastRequestArgs) {
                 window.showToast("Login successful! Retrying download...", {
                     type: "info",
@@ -216,7 +206,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     };
 
-    // Expose the core logout logic to the window object so ui.js can call it
     window.performLogout = () => {
         sessionStorage.removeItem("authToken");
         sessionStorage.removeItem("user");
@@ -258,17 +247,26 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // --- INITIALIZATION ---
     const initialize = () => {
+        // Restore user session
         const user = getUser();
         if (user) {
             window.updateUIForLogin(user);
         }
 
+        // Restore URL history
         const history = getUrlHistory();
         window.renderHistorySidebar(history);
 
-        // Show sidebar by default on desktop
-        if (window.innerWidth >= 768) {
+        // Restore sidebar state
+        const sidebarState = localStorage.getItem(SIDEBAR_STATE_KEY);
+        if (sidebarState === "open") {
             window.showSidebar();
+        } else if (sidebarState === null && window.innerWidth >= 768) {
+            // If no state is saved and on desktop, show by default
+            window.showSidebar();
+        } else {
+            // Otherwise, ensure it's hidden
+            window.hideSidebar();
         }
     };
 

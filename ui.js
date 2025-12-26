@@ -23,7 +23,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const closeSidebarButton = document.getElementById("close-sidebar-button");
     const historyList = document.getElementById("history-list");
     const mainContent = document.querySelector("main");
-    const mainCard = mainContent.querySelector("div");
     const header = document.querySelector("header");
     const logoutConfirmModal = document.getElementById("logout-confirm-modal");
     const logoutConfirmBackdrop = document.getElementById(
@@ -31,6 +30,8 @@ document.addEventListener("DOMContentLoaded", () => {
     );
     const logoutConfirmYes = document.getElementById("logout-confirm-yes");
     const logoutConfirmNo = document.getElementById("logout-confirm-no");
+
+    const SIDEBAR_STATE_KEY = "excelDownloaderSidebarState";
 
     // --- THEME ---
     const applyTheme = (theme) => {
@@ -43,7 +44,6 @@ document.addEventListener("DOMContentLoaded", () => {
             lightIcon.classList.remove("hidden");
             darkIcon.classList.add("hidden");
         }
-        // Re-initialize particles on theme change
         setTimeout(() => initParticles(theme), 10);
     };
 
@@ -71,16 +71,18 @@ document.addEventListener("DOMContentLoaded", () => {
     const showSidebar = () => {
         sidebar.classList.remove("-translate-x-full");
         sidebarBackdrop.classList.remove("hidden");
-        mainContent.classList.add("md:ml-72");
-        header.classList.add("md:ml-72");
+        mainContent.classList.add("md:pl-72");
+        header.classList.add("md:pl-78");
         historyToggleButton.classList.add("hidden");
+        localStorage.setItem(SIDEBAR_STATE_KEY, "open");
     };
     const hideSidebar = () => {
         sidebar.classList.add("-translate-x-full");
         sidebarBackdrop.classList.add("hidden");
-        mainContent.classList.remove("md:ml-72");
-        header.classList.remove("md:ml-72");
+        mainContent.classList.remove("md:pl-72");
+        header.classList.remove("md:pl-78");
         historyToggleButton.classList.remove("hidden");
+        localStorage.setItem(SIDEBAR_STATE_KEY, "closed");
     };
     window.showSidebar = showSidebar;
     window.hideSidebar = hideSidebar;
@@ -97,12 +99,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 "history-item p-3 rounded-lg hover:bg-accent cursor-pointer";
             div.dataset.url = item.url;
             div.dataset.method = item.method;
-            div.innerHTML = `
-                <div class="flex items-center justify-between">
-                    <p class="text-sm font-semibold truncate">${item.url}</p>
-                    <span class="text-xs font-mono px-2 py-1 rounded-full bg-secondary text-secondary-foreground">${item.method}</span>
-                </div>
-            `;
+            div.innerHTML = `<div class="flex items-center justify-between"><p class="text-sm font-semibold truncate">${item.url}</p><span class="text-xs font-mono px-2 py-1 rounded-full bg-secondary text-secondary-foreground">${item.method}</span></div>`;
             historyList.appendChild(div);
         });
     };
@@ -130,7 +127,6 @@ document.addEventListener("DOMContentLoaded", () => {
         if (existingToasts.length >= MAX_TOASTS) {
             removeToast(existingToasts[0]);
         }
-
         const toast = document.createElement("div");
         toast.className =
             "toast transform transition-all duration-300 ease-in-out translate-x-full";
@@ -152,36 +148,20 @@ document.addEventListener("DOMContentLoaded", () => {
                 icon = "fa-info-circle";
                 break;
         }
-        toast.innerHTML = `<div class="w-full rounded-lg border ${bgColor} p-4 shadow-lg">
-            <div class="flex items-start">
-                <i class="fas ${icon} ${textColor} mt-1"></i>
-                <div class="ml-3 flex-1">
-                    <p class="text-sm font-medium ${textColor}">${message}</p>
-                    ${
-                        options.details
-                            ? `<p class="mt-1 text-sm text-muted-foreground">${options.details}</p>`
-                            : ""
-                    }
-                    ${
-                        options.type === "success"
-                            ? `<div class="mt-2"><button data-filename="${options.fileName}" class="retry-download-link text-sm font-medium text-primary hover:underline">Try again</button></div>`
-                            : ""
-                    }
-                </div>
-                <button class="ml-4 flex-shrink-0 close-toast">
-                    <i class="fas fa-times text-muted-foreground hover:text-foreground"></i>
-                </button>
-            </div>
-        </div>`;
-
+        toast.innerHTML = `<div class="w-full rounded-lg border ${bgColor} p-4 shadow-lg"><div class="flex items-start"><i class="fas ${icon} ${textColor} mt-1"></i><div class="ml-3 flex-1"><p class="text-sm font-medium ${textColor}">${message}</p>${
+            options.details
+                ? `<p class="mt-1 text-sm text-muted-foreground">${options.details}</p>`
+                : ""
+        }${
+            options.type === "success"
+                ? `<div class="mt-2"><button data-filename="${options.fileName}" class="retry-download-link text-sm font-medium text-primary hover:underline">Try again</button></div>`
+                : ""
+        }</div><button class="ml-4 flex-shrink-0 close-toast"><i class="fas fa-times text-muted-foreground hover:text-foreground"></i></button></div></div>`;
         toastContainer.insertBefore(toast, clearToastsButton);
         updateClearToastsButtonVisibility();
-
-        // Animate in
         setTimeout(() => {
             toast.classList.remove("translate-x-full");
         }, 100);
-
         toast
             .querySelector(".close-toast")
             .addEventListener("click", () => removeToast(toast));
@@ -200,7 +180,6 @@ document.addEventListener("DOMContentLoaded", () => {
     window.updateUIForLogin = (user) => {
         if (user) {
             userProfile.classList.remove("hidden");
-            userProfile.classList.add("flex");
             const displayUsername = user.name || user.email || "User";
             document.getElementById("user-initials").textContent =
                 displayUsername.charAt(0).toUpperCase();
@@ -210,14 +189,12 @@ document.addEventListener("DOMContentLoaded", () => {
     };
     window.updateUIForLogout = () => {
         userProfile.classList.add("hidden");
-        userProfile.classList.remove("flex");
     };
 
     // --- PARTICLES.JS ---
     const initParticles = (theme) => {
         const color = theme === "dark" ? "#ffffff" : "#000000";
         particlesJS("particles-js", {
-            /* ... particles config ... */
             particles: {
                 number: {
                     value: 80,
@@ -256,8 +233,6 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     // --- INITIALIZATION & EVENT LISTENERS ---
-
-    // Theme
     const savedTheme = localStorage.getItem("theme") || "light";
     applyTheme(savedTheme);
     themeToggle.addEventListener("click", () => {
@@ -265,8 +240,6 @@ document.addEventListener("DOMContentLoaded", () => {
         localStorage.setItem("theme", newTheme);
         applyTheme(newTheme);
     });
-
-    // Modals
     closeLoginModalBtn.addEventListener("click", window.hideLoginModal);
     loginModalBackdrop.addEventListener("click", window.hideLoginModal);
     logoutConfirmNo.addEventListener("click", window.hideLogoutConfirmModal);
@@ -274,8 +247,6 @@ document.addEventListener("DOMContentLoaded", () => {
         "click",
         window.hideLogoutConfirmModal
     );
-
-    // Sidebar
     historyToggleButton.addEventListener("click", showSidebar);
     closeSidebarButton.addEventListener("click", hideSidebar);
     sidebarBackdrop.addEventListener("click", hideSidebar);
@@ -285,20 +256,15 @@ document.addEventListener("DOMContentLoaded", () => {
             document.getElementById("apiUrl").value = item.dataset.url;
             document.getElementById("httpMethod").value = item.dataset.method;
             if (window.innerWidth < 768) {
-                // Only hide on mobile
                 hideSidebar();
             }
         }
     });
-
-    // Toasts
     clearToastsButton.addEventListener("click", () => {
         toastContainer
             .querySelectorAll(":scope > div.toast")
             .forEach((toast) => removeToast(toast));
     });
-
-    // User Profile Dropdown
     if (userProfile) {
         const avatarButton = document.getElementById("user-avatar-button");
         const dropdown = document.getElementById("logout-dropdown");
@@ -311,7 +277,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 dropdown.classList.add("hidden");
             }
         });
-        // Hook logout button to confirmation modal
         document
             .getElementById("logout-button")
             .addEventListener("click", (e) => {
@@ -320,15 +285,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 window.showLogoutConfirmModal();
             });
     }
-
-    // Connect logout confirmation to actual logout function (defined in script.js)
     logoutConfirmYes.addEventListener("click", () => {
         if (window.performLogout) {
             window.performLogout();
         }
         window.hideLogoutConfirmModal();
     });
-
-    // Initial particle load
     initParticles(savedTheme);
 });
