@@ -4,8 +4,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const httpMethodSelect = document.getElementById("httpMethod");
     const downloadButton = document.getElementById("downloadButton");
     const loginForm = document.getElementById("loginForm");
-    const logoutButton = document.getElementById("logout-button");
-    const urlHistoryList = document.getElementById("url-history");
 
     let lastRequestArgs = null;
     const URL_HISTORY_KEY = "excelDownloaderUrlHistory";
@@ -17,34 +15,37 @@ document.addEventListener("DOMContentLoaded", () => {
         return user ? JSON.parse(user) : null;
     };
 
-    const saveUrlToHistory = (url) => {
-        let history = getUrlHistory();
-        if (history.includes(url)) {
-            history = history.filter((u) => u !== url);
-        }
-        history.unshift(url);
-        history = history.slice(0, 10);
-        localStorage.setItem(URL_HISTORY_KEY, JSON.stringify(history));
-        loadUrlHistory();
-    };
-
+    // --- HISTORY ---
     const getUrlHistory = () => {
         const history = localStorage.getItem(URL_HISTORY_KEY);
         return history ? JSON.parse(history) : [];
     };
 
-    const loadUrlHistory = () => {
-        const history = getUrlHistory();
-        urlHistoryList.innerHTML = "";
-        history.forEach((url) => {
-            const option = document.createElement("option");
-            option.value = url;
-            urlHistoryList.appendChild(option);
-        });
+    const saveUrlToHistory = (url, method) => {
+        let history = getUrlHistory();
+        // Remove existing entry if it's the same url and method
+        history = history.filter(
+            (item) => !(item.url === url && item.method === method)
+        );
+        // Add to the front
+        history.unshift({ url, method });
+        // Keep only the last 10
+        history = history.slice(0, 10);
+        localStorage.setItem(URL_HISTORY_KEY, JSON.stringify(history));
+        // Update the UI
+        window.renderHistorySidebar(history);
     };
 
     // --- CORE DOWNLOAD LOGIC ---
     const downloadFile = async (url, method) => {
+        if (!url || !method) {
+            window.showToast("Validation Error", {
+                type: "error",
+                details: "URL and HTTP Method are required.",
+            });
+            return;
+        }
+
         lastRequestArgs = { url, method };
 
         downloadButton.disabled = true;
@@ -115,7 +116,12 @@ document.addEventListener("DOMContentLoaded", () => {
                                     );
                                     window.updateProgress(
                                         percentage,
-                                        `Downloading ${filename}...`
+                                        `Downloading ${filename} (${
+                                            total
+                                                ? (total / 1024).toFixed(2) +
+                                                  " KB"
+                                                : "0 Bytes"
+                                        }) ...`
                                     );
                                 }
                                 controller.enqueue(value);
@@ -150,7 +156,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 fileName: filename,
             });
 
-            saveUrlToHistory(url);
+            saveUrlToHistory(url, method);
         } catch (error) {
             window.showToast("Download Failed", {
                 type: "error",
@@ -210,13 +216,12 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     };
 
-    const handleLogout = () => {
-        if (confirm("Are you sure you want to log out?")) {
-            sessionStorage.removeItem("authToken");
-            sessionStorage.removeItem("user");
-            window.updateUIForLogout();
-            window.showToast("You have been logged out.", { type: "info" });
-        }
+    // Expose the core logout logic to the window object so ui.js can call it
+    window.performLogout = () => {
+        sessionStorage.removeItem("authToken");
+        sessionStorage.removeItem("user");
+        window.updateUIForLogout();
+        window.showToast("You have been logged out.", { type: "info" });
     };
 
     // --- EVENT LISTENERS ---
@@ -233,8 +238,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const password = e.target.password.value;
         handleLogin(email, password);
     });
-
-    logoutButton.addEventListener("click", handleLogout);
 
     document.body.addEventListener("click", function (event) {
         if (event.target.classList.contains("retry-download-link")) {
@@ -259,7 +262,14 @@ document.addEventListener("DOMContentLoaded", () => {
         if (user) {
             window.updateUIForLogin(user);
         }
-        loadUrlHistory();
+
+        const history = getUrlHistory();
+        window.renderHistorySidebar(history);
+
+        // Show sidebar by default on desktop
+        if (window.innerWidth >= 768) {
+            window.showSidebar();
+        }
     };
 
     initialize();

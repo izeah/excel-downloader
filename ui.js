@@ -1,10 +1,37 @@
 document.addEventListener("DOMContentLoaded", () => {
-    // Theme toggling
+    // --- ELEMENTS ---
     const themeToggle = document.getElementById("theme-toggle");
     const html = document.querySelector("html");
     const lightIcon = document.getElementById("theme-icon-light");
     const darkIcon = document.getElementById("theme-icon-dark");
+    const loginModal = document.getElementById("login-modal");
+    const loginModalBackdrop = document.getElementById("login-modal-backdrop");
+    const closeLoginModalBtn = document.getElementById("close-login-modal");
+    const userProfile = document.getElementById("user-profile");
+    const toastContainer = document.getElementById("toast-container");
+    const clearToastsButton = document.getElementById("clear-toasts-button");
+    const progressBarContainer = document.getElementById(
+        "progressBarContainer"
+    );
+    const downloadProgressBar = document.getElementById("downloadProgressBar");
+    const progressText = document.getElementById("progressText");
+    const sidebar = document.getElementById("history-sidebar");
+    const sidebarBackdrop = document.getElementById("sidebar-backdrop");
+    const historyToggleButton = document.getElementById(
+        "history-toggle-button"
+    );
+    const closeSidebarButton = document.getElementById("close-sidebar-button");
+    const historyList = document.getElementById("history-list");
+    const mainContent = document.querySelector("main");
+    const header = document.querySelector("header");
+    const logoutConfirmModal = document.getElementById("logout-confirm-modal");
+    const logoutConfirmBackdrop = document.getElementById(
+        "logout-confirm-backdrop"
+    );
+    const logoutConfirmYes = document.getElementById("logout-confirm-yes");
+    const logoutConfirmNo = document.getElementById("logout-confirm-no");
 
+    // --- THEME ---
     const applyTheme = (theme) => {
         if (theme === "dark") {
             html.classList.add("dark");
@@ -15,81 +42,88 @@ document.addEventListener("DOMContentLoaded", () => {
             lightIcon.classList.remove("hidden");
             darkIcon.classList.add("hidden");
         }
+        // Re-initialize particles on theme change
+        setTimeout(() => initParticles(theme), 10);
     };
 
-    const savedTheme = localStorage.getItem("theme") || "light";
-    applyTheme(savedTheme);
-
-    themeToggle.addEventListener("click", () => {
-        const newTheme = html.classList.contains("dark") ? "light" : "dark";
-        localStorage.setItem("theme", newTheme);
-        applyTheme(newTheme);
-    });
-
-    // Login Modal
-    const loginModal = document.getElementById("login-modal");
-    const loginModalBackdrop = document.getElementById("login-modal-backdrop");
-    const closeLoginModalBtn = document.getElementById("close-login-modal");
-
-    window.showLoginModal = () => {
-        loginModal.classList.remove("hidden");
-        loginModalBackdrop.classList.remove("hidden");
-        setTimeout(() => {
-            loginModal.classList.remove("scale-95", "opacity-0");
-        }, 10);
+    // --- MODALS ---
+    const showModal = (modal, backdrop) => {
+        modal.classList.remove("hidden");
+        backdrop.classList.remove("hidden");
+        setTimeout(() => modal.classList.remove("scale-95", "opacity-0"), 10);
     };
-
-    window.hideLoginModal = () => {
-        loginModal.classList.add("scale-95", "opacity-0");
+    const hideModal = (modal, backdrop) => {
+        modal.classList.add("scale-95", "opacity-0");
         setTimeout(() => {
-            loginModal.classList.add("hidden");
-            loginModalBackdrop.classList.add("hidden");
+            modal.classList.add("hidden");
+            backdrop.classList.add("hidden");
         }, 200);
     };
+    window.showLoginModal = () => showModal(loginModal, loginModalBackdrop);
+    window.hideLoginModal = () => hideModal(loginModal, loginModalBackdrop);
+    window.showLogoutConfirmModal = () =>
+        showModal(logoutConfirmModal, logoutConfirmBackdrop);
+    window.hideLogoutConfirmModal = () =>
+        hideModal(logoutConfirmModal, logoutConfirmBackdrop);
 
-    closeLoginModalBtn.addEventListener("click", window.hideLoginModal);
-    loginModalBackdrop.addEventListener("click", window.hideLoginModal);
-
-    // User Profile Dropdown
-    const userProfile = document.getElementById("user-profile");
-    if (userProfile) {
-        const avatar = userProfile.querySelector(".relative");
-        const helloUser = document.getElementById("hello-user");
-        const dropdown = document.getElementById("logout-dropdown");
-
-        avatar.addEventListener("click", (e) => {
-            e.stopPropagation();
-            dropdown.classList.toggle("hidden");
+    // --- SIDEBAR ---
+    const showSidebar = () => {
+        sidebar.classList.remove("-translate-x-full");
+        sidebarBackdrop.classList.remove("hidden");
+        mainContent.classList.add("md:ml-72");
+        header.classList.add("md:ml-72");
+        historyToggleButton.classList.add("hidden");
+    };
+    const hideSidebar = () => {
+        sidebar.classList.add("-translate-x-full");
+        sidebarBackdrop.classList.add("hidden");
+        mainContent.classList.remove("md:ml-72");
+        header.classList.remove("md:ml-72");
+        historyToggleButton.classList.remove("hidden");
+    };
+    window.showSidebar = showSidebar;
+    window.hideSidebar = hideSidebar;
+    window.renderHistorySidebar = (history) => {
+        historyList.innerHTML = "";
+        if (history.length === 0) {
+            historyList.innerHTML =
+                '<p class="text-center text-sm text-muted-foreground p-4">No history yet.</p>';
+            return;
+        }
+        history.forEach((item) => {
+            const div = document.createElement("div");
+            div.className =
+                "history-item p-3 rounded-lg hover:bg-accent cursor-pointer";
+            div.dataset.url = item.url;
+            div.dataset.method = item.method;
+            div.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <p class="text-sm font-semibold truncate">${item.url}</p>
+                    <span class="text-xs font-mono px-2 py-1 rounded-full bg-secondary text-secondary-foreground">${item.method}</span>
+                </div>
+            `;
+            historyList.appendChild(div);
         });
+    };
 
-        helloUser.addEventListener("click", (e) => {
-            e.stopPropagation();
-            dropdown.classList.toggle("hidden");
-        });
-
-        document.addEventListener("click", () => {
-            if (!dropdown.classList.contains("hidden")) {
-                dropdown.classList.add("hidden");
-            }
-        });
-    }
-
-    // Toast Notifications
-    const toastContainer = document.getElementById("toast-container");
+    // --- TOASTS ---
     const MAX_TOASTS = 5;
-
+    const updateClearToastsButtonVisibility = () => {
+        const toastCount =
+            toastContainer.querySelectorAll(":scope > div").length;
+        clearToastsButton.classList.toggle("hidden", toastCount === 0);
+    };
     window.showToast = (
         message,
         options = { type: "info", details: "", size: 0, fileName: "" }
     ) => {
-        // Remove oldest toast if limit is reached
-        if (toastContainer.children.length >= MAX_TOASTS) {
-            toastContainer.removeChild(toastContainer.firstChild);
+        const existingToasts = toastContainer.querySelectorAll(":scope > div");
+        if (existingToasts.length >= MAX_TOASTS) {
+            existingToasts[0].remove();
         }
 
         const toast = document.createElement("div");
         toast.className = `transform transition-all duration-300 ease-in-out translate-x-full`;
-
         let bgColor, textColor, icon;
         switch (options.type) {
             case "success":
@@ -108,8 +142,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 icon = "fa-info-circle";
                 break;
         }
-
-        let toastContent = `
+        toast.innerHTML = `<div class="w-full rounded-lg border ${bgColor} p-4 shadow-lg">
             <div class="flex items-start">
                 <i class="fas ${icon} ${textColor} mt-1"></i>
                 <div class="ml-3 flex-1">
@@ -121,39 +154,38 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                     ${
                         options.type === "success"
-                            ? `
-                        <div class="mt-2">
+                            ? `<div class="mt-2">
                             <span class="text-xs block mb-1 ${textColor} opacity-80">
                                 If your download does not start automatically, click the link below to try again:
                             </span>
                             <button data-filename="${
                                 options.fileName
-                            }" class="retry-download-link text-left text-sm font-medium ${textColor} hover:underline cursor-pointer">
-                    ${options.fileName} (${
+                            }" class="retry-download-link text-left text-sm font-medium ${textColor} hover:underline cursor-pointer"> ${
+                                  options.fileName
+                              } (${
                                   options.size
                                       ? (options.size / 1024).toFixed(2) + " KB"
                                       : "0 Bytes"
                               })
-                            </button>
-                        </div>
-                    `
+                                      </button>
+                              </div>`
                             : ""
                     }
                 </div>
-                <button class="ml-4 flex-shrink-0">
-                    <i class="fas fa-times ${textColor}"></i>
+                <button class="ml-4 flex-shrink-0 close-toast">
+                    <i class="fas fa-times text-muted-foreground hover:text-foreground"></i>
                 </button>
             </div>
-        `;
+        </div>`;
 
-        toast.innerHTML = `<div class="w-full rounded-lg border ${bgColor} p-4 shadow-lg">${toastContent}</div>`;
+        toastContainer.insertBefore(toast, clearToastsButton);
+        updateClearToastsButtonVisibility();
 
-        toast.querySelector("button.ml-4").addEventListener("click", () => {
+        toast.querySelector(".close-toast").addEventListener("click", () => {
             toast.classList.add("opacity-0", "translate-x-full");
             setTimeout(() => toast.remove(), 300);
+            updateClearToastsButtonVisibility();
         });
-
-        toastContainer.appendChild(toast);
 
         // Animate in
         setTimeout(() => {
@@ -161,50 +193,37 @@ document.addEventListener("DOMContentLoaded", () => {
         }, 100);
     };
 
-    // Progress Bar
-    const progressBarContainer = document.getElementById(
-        "progressBarContainer"
-    );
-    const downloadProgressBar = document.getElementById("downloadProgressBar");
-    const progressText = document.getElementById("progressText");
-
+    // --- UI UPDATES ---
     window.updateProgress = (percentage, text) => {
         if (percentage === 0 && text === "") {
             progressBarContainer.classList.add("hidden");
             return;
         }
-
         progressBarContainer.classList.remove("hidden");
         downloadProgressBar.style.width = `${percentage}%`;
-        downloadProgressBar.innerText = `${percentage}%`;
         progressText.innerText = text;
     };
-
     window.updateUIForLogin = (user) => {
-        const userProfileDiv = document.getElementById("user-profile");
-        const userInitials = document.getElementById("user-initials");
-        const usernameSpan = document.getElementById("username");
-
         if (user) {
-            userProfileDiv.classList.remove("hidden");
-            userProfileDiv.classList.add("flex");
-            // Use user.name, fallback to user.email, or 'User' if neither is available
+            userProfile.classList.remove("hidden");
+            userProfile.classList.add("flex");
             const displayUsername = user.name || user.email || "User";
-            userInitials.textContent = displayUsername.charAt(0).toUpperCase();
-            usernameSpan.textContent = displayUsername;
+            document.getElementById("user-initials").textContent =
+                displayUsername.charAt(0).toUpperCase();
+            document.getElementById("username-display").textContent =
+                displayUsername;
         }
     };
-
     window.updateUIForLogout = () => {
-        const userProfileDiv = document.getElementById("user-profile");
-        userProfileDiv.classList.add("hidden");
-        userProfileDiv.classList.remove("flex");
+        userProfile.classList.add("hidden");
+        userProfile.classList.remove("flex");
     };
 
-    // Particles.js Initialization
+    // --- PARTICLES.JS ---
     const initParticles = (theme) => {
         const color = theme === "dark" ? "#ffffff" : "#000000";
         particlesJS("particles-js", {
+            /* ... particles config ... */
             particles: {
                 number: {
                     value: 80,
@@ -236,25 +255,87 @@ document.addEventListener("DOMContentLoaded", () => {
                     onhover: { enable: true, mode: "grab" },
                     resize: true,
                 },
-                modes: {
-                    grab: { distance: 140, line_opacity: 1 },
-                },
+                modes: { grab: { distance: 140, line_opacity: 1 } },
             },
             retina_detect: true,
         });
     };
 
-    const currentTheme = localStorage.getItem("theme") || "light";
-    initParticles(currentTheme);
+    // --- INITIALIZATION & EVENT LISTENERS ---
 
-    // Re-initialize particles on theme change
-    document.getElementById("theme-toggle").addEventListener("click", () => {
-        const newTheme = document
-            .querySelector("html")
-            .classList.contains("dark")
-            ? "dark"
-            : "light";
-        // A short delay to allow background color transition
-        setTimeout(() => initParticles(newTheme), 10);
+    // Theme
+    const savedTheme = localStorage.getItem("theme") || "light";
+    applyTheme(savedTheme);
+    themeToggle.addEventListener("click", () => {
+        const newTheme = html.classList.contains("dark") ? "light" : "dark";
+        localStorage.setItem("theme", newTheme);
+        applyTheme(newTheme);
     });
+
+    // Modals
+    closeLoginModalBtn.addEventListener("click", window.hideLoginModal);
+    loginModalBackdrop.addEventListener("click", window.hideLoginModal);
+    logoutConfirmNo.addEventListener("click", window.hideLogoutConfirmModal);
+    logoutConfirmBackdrop.addEventListener(
+        "click",
+        window.hideLogoutConfirmModal
+    );
+
+    // Sidebar
+    historyToggleButton.addEventListener("click", showSidebar);
+    closeSidebarButton.addEventListener("click", hideSidebar);
+    sidebarBackdrop.addEventListener("click", hideSidebar);
+    historyList.addEventListener("click", (e) => {
+        const item = e.target.closest(".history-item");
+        if (item) {
+            document.getElementById("apiUrl").value = item.dataset.url;
+            document.getElementById("httpMethod").value = item.dataset.method;
+            if (window.innerWidth < 768) {
+                // Only hide on mobile
+                hideSidebar();
+            }
+        }
+    });
+
+    // Toasts
+    clearToastsButton.addEventListener("click", () => {
+        toastContainer
+            .querySelectorAll(":scope > div")
+            .forEach((toast) => toast.remove());
+        updateClearToastsButtonVisibility();
+    });
+
+    // User Profile Dropdown
+    if (userProfile) {
+        const avatarButton = document.getElementById("user-avatar-button");
+        const dropdown = document.getElementById("logout-dropdown");
+        avatarButton.addEventListener("click", (e) => {
+            e.stopPropagation();
+            dropdown.classList.toggle("hidden");
+        });
+        document.addEventListener("click", () => {
+            if (!dropdown.classList.contains("hidden")) {
+                dropdown.classList.add("hidden");
+            }
+        });
+        // Hook logout button to confirmation modal
+        document
+            .getElementById("logout-button")
+            .addEventListener("click", (e) => {
+                e.stopPropagation();
+                dropdown.classList.add("hidden");
+                window.showLogoutConfirmModal();
+            });
+    }
+
+    // Connect logout confirmation to actual logout function (defined in script.js)
+    logoutConfirmYes.addEventListener("click", () => {
+        if (window.performLogout) {
+            window.performLogout();
+        }
+        window.hideLogoutConfirmModal();
+    });
+
+    // Initial particle load
+    initParticles(savedTheme);
 });
