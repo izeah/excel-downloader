@@ -116,7 +116,7 @@ document.addEventListener("DOMContentLoaded", () => {
         setTimeout(() => {
             toast.remove();
             updateClearToastsButtonVisibility();
-        }, 300);
+        }, 200);
     };
     window.showToast = (
         message,
@@ -161,7 +161,7 @@ document.addEventListener("DOMContentLoaded", () => {
         updateClearToastsButtonVisibility();
         setTimeout(() => {
             toast.classList.remove("translate-x-full");
-        }, 100);
+        }, 50);
         toast
             .querySelector(".close-toast")
             .addEventListener("click", () => removeToast(toast));
