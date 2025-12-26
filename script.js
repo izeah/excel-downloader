@@ -146,6 +146,7 @@ document.addEventListener("DOMContentLoaded", () => {
             window.showToast("Download Successful!", {
                 type: "success",
                 details: contentDescription,
+                size: total,
                 fileName: filename,
             });
 

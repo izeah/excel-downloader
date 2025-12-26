@@ -80,7 +80,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     window.showToast = (
         message,
-        options = { type: "info", details: "", fileName: "" }
+        options = { type: "info", details: "", size: 0, fileName: "" }
     ) => {
         // Remove oldest toast if limit is reached
         if (toastContainer.children.length >= MAX_TOASTS) {
@@ -126,8 +126,14 @@ document.addEventListener("DOMContentLoaded", () => {
                             <span class="text-xs block mb-1 ${textColor} opacity-80">
                                 If your download does not start automatically, click the link below to try again:
                             </span>
-                            <button data-filename="${options.fileName}" class="retry-download-link text-sm font-medium ${textColor} hover:underline cursor-pointer">
-                                Retry
+                            <button data-filename="${
+                                options.fileName
+                            }" class="retry-download-link text-left text-sm font-medium ${textColor} hover:underline cursor-pointer">
+                    ${options.fileName} (${
+                                  options.size
+                                      ? (options.size / 1024).toFixed(2) + " KB"
+                                      : "0 Bytes"
+                              })
                             </button>
                         </div>
                     `
