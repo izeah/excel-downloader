@@ -1,236 +1,265 @@
 document.addEventListener("DOMContentLoaded", () => {
-    // General Elements
     const downloadForm = document.getElementById("downloadForm");
     const apiUrlInput = document.getElementById("apiUrl");
-    const httpMethodInput = document.getElementById("httpMethod");
+    const httpMethodSelect = document.getElementById("httpMethod");
     const downloadButton = document.getElementById("downloadButton");
-
-    // Progress Bar Elements
-    const progressBarContainer = document.getElementById(
-        "progressBarContainer"
-    );
-    const downloadProgressBar = document.getElementById("downloadProgressBar");
-    const progressText = document.getElementById("progressText");
-
-    // Modals
-    const successModal = new bootstrap.Modal(
-        document.getElementById("successModal")
-    );
-    const errorModal = new bootstrap.Modal(
-        document.getElementById("errorModal")
-    );
-    const loginModal = new bootstrap.Modal(
-        document.getElementById("loginModal")
-    );
-
-    // Modal-specific Elements
-    const errorMessageElement = document.getElementById("errorMessage");
-    const retryDownloadLink = document.getElementById("retryDownloadLink");
     const loginForm = document.getElementById("loginForm");
-    const emailInput = document.getElementById("email");
-    const passwordInput = document.getElementById("password");
-    const loginErrorElement = document.getElementById("loginError");
+    const logoutButton = document.getElementById("logout-button");
+    const urlHistoryList = document.getElementById("url-history");
 
-    // State
-    let authToken = sessionStorage.getItem("authToken");
-    let lastBlobUrl = null;
-    let lastFilename = "download.xlsx"; // Default fallback
+    let lastRequestArgs = null;
+    const URL_HISTORY_KEY = "excelDownloaderUrlHistory";
 
-    /**
-     * Initiates the file download process.
-     */
-    async function initiateDownload() {
-        const url = apiUrlInput.value;
-        if (!url) {
-            showError("URL API tidak boleh kosong.");
-            return;
+    // --- UTILS ---
+    const getAuthToken = () => sessionStorage.getItem("authToken");
+    const getUser = () => {
+        const user = sessionStorage.getItem("user");
+        return user ? JSON.parse(user) : null;
+    };
+
+    const saveUrlToHistory = (url) => {
+        let history = getUrlHistory();
+        if (history.includes(url)) {
+            history = history.filter((u) => u !== url);
+        }
+        history.unshift(url);
+        history = history.slice(0, 10);
+        localStorage.setItem(URL_HISTORY_KEY, JSON.stringify(history));
+        loadUrlHistory();
+    };
+
+    const getUrlHistory = () => {
+        const history = localStorage.getItem(URL_HISTORY_KEY);
+        return history ? JSON.parse(history) : [];
+    };
+
+    const loadUrlHistory = () => {
+        const history = getUrlHistory();
+        urlHistoryList.innerHTML = "";
+        history.forEach((url) => {
+            const option = document.createElement("option");
+            option.value = url;
+            urlHistoryList.appendChild(option);
+        });
+    };
+
+    // --- CORE DOWNLOAD LOGIC ---
+    const downloadFile = async (url, method) => {
+        lastRequestArgs = { url, method };
+
+        downloadButton.disabled = true;
+        downloadButton.innerText = "Downloading...";
+        window.updateProgress(0, "Preparing to download...");
+
+        const token = getAuthToken();
+        const headers = new Headers();
+        if (token) {
+            headers.append("Authorization", `Bearer ${token}`);
         }
 
-        // --- UI Setup ---
-        downloadButton.disabled = true;
-        progressBarContainer.style.display = "block";
-        updateProgress(0, "Mempersiapkan download...");
-
         try {
-            // --- Simulate initial progress ---
-            const progressInterval = startProgressSimulation();
-
-            // --- Fetch Request ---
-            const headers = {
-                "Content-Type": "application/json",
-            };
-            if (authToken) {
-                headers["Authorization"] = `Bearer ${authToken}`;
-            }
-
-            const response = await fetch(url, {
-                method: httpMethodInput.value,
-                headers: headers,
-                body: JSON.stringify({}),
-            });
-
-            // --- Process Response ---
-            clearInterval(progressInterval);
-            updateProgress(100, "Memproses file...");
+            const response = await fetch(url, { method, headers });
 
             if (response.status === 401) {
-                // Unauthorized: Clear old token and prompt for login
-                authToken = null;
-                sessionStorage.removeItem("authToken");
-                loginModal.show();
-                // Hide progress bar as we are now in login flow
-                progressBarContainer.style.display = "none";
+                window.showLoginModal();
                 downloadButton.disabled = false;
-                return; // Stop the download process
+                downloadButton.innerText = "Download";
+                window.updateProgress(0, "");
+                return;
             }
 
             if (!response.ok) {
-                const errorDetails = await getErrorDetails(response);
-                throw new Error(`Gagal mengambil file: ${errorDetails}`);
-            }
-
-            const filename = getFilenameFromHeaders(response.headers);
-            const blob = await response.blob();
-            if (lastBlobUrl) {
-                URL.revokeObjectURL(lastBlobUrl); // Clean up previous blob URL
-            }
-            lastBlobUrl = URL.createObjectURL(blob);
-            lastFilename = filename; // Store the filename
-
-            // --- Trigger Download & Show Success ---
-            triggerFileDownload(lastBlobUrl, filename);
-            successModal.show();
-        } catch (error) {
-            showError(error.message);
-        } finally {
-            // --- Final UI State ---
-            if (!loginModal._isShown) {
-                // Don't re-enable if login modal is active
-                downloadButton.disabled = false;
-                progressBarContainer.style.display = "none";
-            }
-        }
-    }
-
-    /**
-     * Handles the login form submission.
-     */
-    async function handleLogin(event) {
-        event.preventDefault();
-        loginErrorElement.style.display = "none";
-        const loginUrl = "http://localhost:3000/v1/auth/login";
-
-        try {
-            const response = await fetch(loginUrl, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    email: emailInput.value,
-                    password: passwordInput.value,
-                }),
-            });
-
-            const result = await response.json();
-
-            if (!response.ok) {
-                throw new Error(result.message || "Login gagal.");
-            }
-
-            if (result.data && result.data.token) {
-                authToken = result.data.token;
-                sessionStorage.setItem("authToken", authToken);
-                loginModal.hide();
-
-                // Automatically retry the download after successful login
-                initiateDownload();
-            } else {
-                throw new Error("Token tidak ditemukan dalam respons.");
-            }
-        } catch (error) {
-            loginErrorElement.textContent = error.message;
-            loginErrorElement.style.display = "block";
-        }
-    }
-
-    // --- Helper Functions ---
-
-    function showError(message) {
-        errorMessageElement.textContent =
-            message || "Terjadi kesalahan tidak dikenal.";
-        errorModal.show();
-    }
-
-    function updateProgress(percentage, text) {
-        downloadProgressBar.style.width = `${percentage}%`;
-        downloadProgressBar.setAttribute("aria-valuenow", percentage);
-        downloadProgressBar.textContent = `${percentage}%`;
-        progressText.textContent = text;
-    }
-
-    function startProgressSimulation() {
-        updateProgress(0, "Menghubungi server...");
-        let currentProgress = 0;
-        return setInterval(() => {
-            if (currentProgress < 90) {
-                currentProgress += Math.floor(Math.random() * 5) + 1;
-                if (currentProgress > 90) currentProgress = 90;
-                updateProgress(
-                    currentProgress,
-                    `Mengunduh... ${currentProgress}%`
+                const errorData = await response
+                    .json()
+                    .catch(() => ({ message: "An unknown error occurred." }));
+                throw new Error(
+                    errorData.message ||
+                        `HTTP error! Status: ${response.status}`
                 );
             }
-        }, 400);
-    }
 
-    async function getErrorDetails(response) {
-        let details = `Status: ${response.status} ${response.statusText}`;
+            const contentDisposition = response.headers.get(
+                "content-disposition"
+            );
+            const contentDescription =
+                response.headers.get("content-description") ||
+                "Downloaded file";
+            let filename = "downloaded.xlsx";
+            if (contentDisposition) {
+                const filenameMatch =
+                    contentDisposition.match(/filename="?(.+?)"?$/);
+                if (filenameMatch) {
+                    filename = filenameMatch[1];
+                }
+            }
+
+            const contentLength = response.headers.get("content-length");
+            const total = parseInt(contentLength, 10);
+            let loaded = 0;
+
+            const reader = response.body.getReader();
+            const stream = new ReadableStream({
+                start(controller) {
+                    function push() {
+                        reader
+                            .read()
+                            .then(({ done, value }) => {
+                                if (done) {
+                                    controller.close();
+                                    return;
+                                }
+                                loaded += value.length;
+                                if (total) {
+                                    const percentage = Math.round(
+                                        (loaded / total) * 100
+                                    );
+                                    window.updateProgress(
+                                        percentage,
+                                        `Downloading ${filename}...`
+                                    );
+                                }
+                                controller.enqueue(value);
+                                push();
+                            })
+                            .catch((error) => {
+                                console.error("Stream reading error:", error);
+                                controller.error(error);
+                            });
+                    }
+                    push();
+                },
+            });
+
+            const blob = await new Response(stream).blob();
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = downloadUrl;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(downloadUrl);
+
+            window.updateProgress(100, `Completed!`);
+            setTimeout(() => window.updateProgress(0, ""), 2000);
+
+            window.showToast("Download Successful!", {
+                type: "success",
+                details: contentDescription,
+                fileName: filename,
+            });
+
+            saveUrlToHistory(url);
+        } catch (error) {
+            window.showToast("Download Failed", {
+                type: "error",
+                details: error.message,
+            });
+            window.updateProgress(0, "");
+        } finally {
+            downloadButton.disabled = false;
+            downloadButton.innerText = "Download";
+        }
+    };
+
+    // --- AUTHENTICATION LOGIC ---
+    const handleLogin = async (email, password) => {
         try {
-            const errorData = await response.json();
-            details += ` - Pesan: ${
-                errorData.message || JSON.stringify(errorData)
-            }`;
-        } catch {
-            // Can't parse JSON, use text
-            const errorText = await response.text();
-            if (errorText) details += ` - ${errorText.substring(0, 100)}...`;
+            // NOTE: Replace with your actual login API endpoint
+            const response = await fetch(
+                "http://localhost:3000/v1/auth/login",
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email, password }),
+                }
+            );
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || "Login failed.");
+            }
+
+            sessionStorage.setItem("authToken", data.data.token);
+            sessionStorage.setItem(
+                "user",
+                JSON.stringify({
+                    name: data.data.user.name,
+                    email: data.data.user.email,
+                })
+            );
+
+            window.hideLoginModal();
+            window.updateUIForLogin(data.user);
+
+            // If a download was pending, retry it
+            if (lastRequestArgs) {
+                window.showToast("Login successful! Retrying download...", {
+                    type: "info",
+                });
+                await downloadFile(lastRequestArgs.url, lastRequestArgs.method);
+                lastRequestArgs = null;
+            }
+        } catch (error) {
+            window.showToast("Login Failed", {
+                type: "error",
+                details: error.message,
+            });
         }
-        return details;
-    }
+    };
 
-    function getFilenameFromHeaders(headers) {
-        const contentDisposition = headers.get("Content-Disposition");
-        if (contentDisposition) {
-            const match = contentDisposition.match(/filename="?([^"]+)"?/);
-            if (match && match[1]) return match[1];
+    const handleLogout = () => {
+        if (confirm("Are you sure you want to log out?")) {
+            sessionStorage.removeItem("authToken");
+            sessionStorage.removeItem("user");
+            window.updateUIForLogout();
+            window.showToast("You have been logged out.", { type: "info" });
         }
-        return "download.xlsx"; // Fallback filename
-    }
+    };
 
-    function triggerFileDownload(url, filename) {
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-    }
-
-    // --- Event Listeners ---
+    // --- EVENT LISTENERS ---
     downloadForm.addEventListener("submit", (e) => {
         e.preventDefault();
-        initiateDownload();
+        const url = apiUrlInput.value;
+        const method = httpMethodSelect.value;
+        downloadFile(url, method);
     });
 
-    loginForm.addEventListener("submit", handleLogin);
-
-    retryDownloadLink.addEventListener("click", (e) => {
+    loginForm.addEventListener("submit", (e) => {
         e.preventDefault();
-        if (lastBlobUrl) {
-            triggerFileDownload(lastBlobUrl, lastFilename);
-        } else {
-            showError(
-                "Tidak ada file sebelumnya untuk diunduh ulang. Silakan coba download baru."
-            );
+        const email = e.target.email.value;
+        const password = e.target.password.value;
+        handleLogin(email, password);
+    });
+
+    logoutButton.addEventListener("click", handleLogout);
+
+    document.body.addEventListener("click", function (event) {
+        if (event.target.classList.contains("retry-download-link")) {
+            event.preventDefault();
+            if (lastRequestArgs) {
+                window.showToast(
+                    `Retrying download for: ${lastRequestArgs.url}`,
+                    { type: "info" }
+                );
+                downloadFile(lastRequestArgs.url, lastRequestArgs.method);
+            } else {
+                window.showToast("No recent download to retry.", {
+                    type: "error",
+                });
+            }
         }
     });
+
+    // --- INITIALIZATION ---
+    const initialize = () => {
+        const user = getUser();
+        if (user) {
+            window.updateUIForLogin(user);
+        }
+        loadUrlHistory();
+    };
+
+    initialize();
 });
