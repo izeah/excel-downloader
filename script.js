@@ -191,7 +191,7 @@ document.addEventListener("DOMContentLoaded", () => {
             );
 
             window.hideLoginModal();
-            window.updateUIForLogin(data.user);
+            window.updateUIForLogin(data.data.user);
 
             // If a download was pending, retry it
             if (lastRequestArgs) {
