@@ -163,7 +163,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         options.type === "success"
                             ? `<div class="mt-2">
                             <span class="text-xs block mb-1 ${textColor} opacity-80">
-                                If your download does not start automatically, click the link below to try again:
+                                Your download will start automatically. If it didn’t, click the link below to download manually:
                             </span>
                             <button data-filename="${
                                 options.fileName
