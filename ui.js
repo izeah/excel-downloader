@@ -113,7 +113,7 @@ document.addEventListener("DOMContentLoaded", () => {
         clearToastsButton.classList.toggle("hidden", toastCount === 0);
     };
     const removeToast = (toast) => {
-        toast.classList.add("opacity-0");
+        toast.classList.add("translate-x-full");
         setTimeout(() => {
             toast.remove();
             updateClearToastsButtonVisibility();
